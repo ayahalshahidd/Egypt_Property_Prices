@@ -205,6 +205,7 @@ tempCodeRunnerFile.py
 
 # Ruff stuff:
 .ruff_cache/
+.spark_tmp/
 
 # PyPI configuration file
 .pypirc
@@ -219,5 +220,14 @@ __marimo__/
 
 data/raw/*.csv
 data/raw/*.zip
-data/processed/*.csv
-data/processed/splits/*.csv
+data/interim/
+!data/interim/.gitkeep
+data/processed/
+!data/processed/.gitkeep
+data/external/
+!data/external/.gitkeep
+models/*.pkl
+reports/figures/
+!reports/figures/.gitkeep
+reports/results/*.csv
+reports/results/*.json
