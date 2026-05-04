@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+data/raw/*.csv
+data/raw/*.zip
+data/processed/*.csv
+data/processed/splits/*.csv
