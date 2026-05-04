@@ -18,13 +18,21 @@ The target is modeled as `log1p(price_per_sqm)` to reduce skew.
 
 | Model | R2 | RMSE log | MAE log | RMSE EGP/sqm |
 | --- | ---: | ---: | ---: | ---: |
-| Spark Random Forest | 0.5432 | 0.4393 | 0.3246 | 59,584 |
-| Spark Decision Tree | 0.4707 | 0.4729 | 0.3506 | 60,799 |
-| Spark Linear Regression | 0.4540 | 0.4803 | 0.3621 | 64,537 |
+| Spark Random Forest | 0.5394 | 0.4411 | 0.3264 | 59,856 |
+| Spark Decision Tree | 0.4589 | 0.4781 | 0.3555 | 61,225 |
+| Spark Linear Regression | 0.4534 | 0.4805 | 0.3627 | 64,707 |
 
 ## Selected Model
 
 `Spark Random Forest` was selected by highest holdout R2.
+
+## Train, Validation, and Test Metrics
+
+| Model | Train R2 | Validation R2 | Test R2 | Test RMSE EGP/sqm |
+| --- | ---: | ---: | ---: | ---: |
+| Spark Random Forest | 0.5565 | 0.5278 | 0.5394 | 59,856 |
+| Spark Decision Tree | 0.4775 | 0.4535 | 0.4589 | 61,225 |
+| Spark Linear Regression | 0.4254 | 0.4202 | 0.4534 | 64,707 |
 
 ## Training Scope
 

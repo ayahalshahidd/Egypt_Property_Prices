@@ -69,7 +69,10 @@ def main() -> None:
     splits = split_spark_data(model_df)
     params = load_spark_model_params(CONFIGS_DIR / "spark_model_params.json")
 
-    print(f"Training Spark ML models on {splits['train'].count():,} rows; testing on {splits['test'].count():,}")
+    print(
+        f"Training Spark ML models on {splits['train'].count():,} rows; "
+        f"validating on {splits['validation'].count():,}; testing on {splits['test'].count():,}"
+    )
     spark_results, best_bundle = train_spark_models(splits, params)
     write_spark_model_reports(spark_results, best_bundle, RESULTS_DIR)
     model_path = save_spark_model_bundle(best_bundle, MODELS_DIR)
