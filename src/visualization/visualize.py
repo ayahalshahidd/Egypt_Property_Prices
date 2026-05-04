@@ -58,15 +58,16 @@ def plot_residuals(y_true_log: pd.Series, y_pred_log: np.ndarray, output_path: s
     plt.close(fig)
 
 
-def plot_feature_importance(model, features: list[str], output_path: str | Path, top_n: int = 20) -> None:
-    if hasattr(model, "feature_importances_"):
-        scores = model.feature_importances_
+def plot_spark_feature_importance(model, features: list[str], output_path: str | Path, top_n: int = 20) -> None:
+    estimator = model.stages[-1] if hasattr(model, "stages") else model
+    if hasattr(estimator, "featureImportances"):
+        scores = np.array(estimator.featureImportances.toArray())
         score_name = "importance"
-        title = "Feature Importance"
-    elif hasattr(model, "coef_"):
-        scores = np.abs(np.ravel(model.coef_))
+        title = "Spark Feature Importance"
+    elif hasattr(estimator, "coefficients"):
+        scores = np.abs(np.array(estimator.coefficients.toArray()))
         score_name = "absolute_coefficient"
-        title = "Feature Coefficients"
+        title = "Spark Feature Coefficients"
     else:
         return
 

@@ -226,7 +226,9 @@ data/processed/
 !data/processed/.gitkeep
 data/external/
 !data/external/.gitkeep
-models/*.pkl
+models/
+!models/.gitkeep
+*.crc
 reports/figures/
 !reports/figures/.gitkeep
 reports/results/*.csv

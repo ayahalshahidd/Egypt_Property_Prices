@@ -24,3 +24,17 @@ PROCESSED_FEATURES_PATH = PROCESSED_DATA_DIR / "propertyFinder_features_csv"
 TARGET = "price_per_sqm"
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
+
+FEATURES = [
+    "area_value", "log_area", "bedrooms", "bathrooms",
+    "bed_bath_ratio", "total_rooms", "area_per_room", "area_x_beds",
+    "lat", "lon",
+    "city_enc", "town_enc", "district_enc", "property_type_enc",
+    "completion_score", "is_furnished", "has_installments",
+    "amenity_count", "has_pool", "has_gym", "has_security",
+    "has_parking", "has_garden", "has_balcony",
+    "has_private_pool", "has_spa", "has_ac",
+    "days_listed",
+    "is_premium", "is_verified", "is_new_construction",
+    "is_direct_from_dev", "images_count",
+]
