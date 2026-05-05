@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import platform
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -8,8 +10,8 @@ from pathlib import Path
 from pyspark.sql import DataFrame, SparkSession
 
 
-DEFAULT_SPARK_MASTER = "local-cluster[2,2,2048]"
-FALLBACK_SPARK_MASTER = "local[*]"
+DEFAULT_SPARK_MASTER = "local[2]"
+FALLBACK_SPARK_MASTER = "local[2]"
 
 
 def configure_local_spark(java_home: str | None = None, temp_dir: str | Path | None = None) -> None:
@@ -19,7 +21,7 @@ def configure_local_spark(java_home: str | None = None, temp_dir: str | Path | N
         os.environ["PATH"] = str(Path(java_home) / "bin") + os.pathsep + os.environ.get("PATH", "")
 
     if temp_dir is None:
-        temp_dir = Path.cwd() / ".spark_tmp"
+        temp_dir = Path(os.environ.get("LOCALAPPDATA", tempfile.gettempdir())) / "Temp" / "egypt_property_spark"
     temp_path = Path(temp_dir).resolve()
     temp_path.mkdir(parents=True, exist_ok=True)
     os.environ["TEMP"] = str(temp_path)
@@ -63,6 +65,10 @@ def _build_spark(app_name: str, master: str) -> SparkSession:
         .config("spark.driver.bindAddress", "127.0.0.1")
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.master", master)
+        .config("spark.driver.memory", os.environ.get("SPARK_DRIVER_MEMORY", "4g"))
+        .config("spark.executor.memory", os.environ.get("SPARK_EXECUTOR_MEMORY", "4g"))
+        .config("spark.sql.shuffle.partitions", os.environ.get("SPARK_SQL_SHUFFLE_PARTITIONS", "4"))
+        .config("spark.default.parallelism", os.environ.get("SPARK_DEFAULT_PARALLELISM", "4"))
         .getOrCreate()
     )
 
@@ -72,13 +78,19 @@ def load_raw_data(spark: SparkSession, path: str | Path) -> DataFrame:
 
 
 def write_csv(df: DataFrame, output_dir: str | Path, coalesce: bool = True) -> None:
-    """Write a Spark DataFrame as a local CSV without requiring Hadoop winutils.
-
-    Spark's native CSV writer goes through Hadoop's filesystem layer, which needs
-    HADOOP_HOME/winutils on Windows. The project dataset is small enough after
-    cleaning for local pandas export, so pipeline artifacts use this simpler path.
-    """
+    """Write a Spark DataFrame as CSV, falling back to pandas only on local FS failures."""
     output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "part-00000.csv"
-    df.toPandas().to_csv(output_file, index=False, encoding="utf-8-sig")
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    writer_df = df.coalesce(1) if coalesce else df
+    try:
+        if platform.system() == "Windows" and not os.environ.get("HADOOP_HOME"):
+            raise RuntimeError("HADOOP_HOME is not set; using pandas CSV export on Windows.")
+        writer_df.write.mode("overwrite").option("header", True).csv(str(output_dir))
+    except Exception as exc:
+        print(f"Spark CSV write skipped/failed for {output_dir}: {exc}")
+        print("Falling back to pandas CSV export for this local artifact.")
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = output_dir / "part-00000.csv"
+        df.toPandas().to_csv(output_file, index=False, encoding="utf-8-sig")

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import platform
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -51,7 +53,7 @@ def split_spark_data(
     train_df, validation_df, test_df = model_df.randomSplit(
         [train_size, validation_size, test_size], seed=random_state
     )
-    return {"train": train_df.cache(), "validation": validation_df.cache(), "test": test_df.cache()}
+    return {"train": train_df, "validation": validation_df, "test": test_df}
 
 
 def train_spark_models(
@@ -109,18 +111,31 @@ def save_spark_model_bundle(bundle: dict[str, Any], output_dir: str | Path) -> P
         "model_persisted": True,
         "model_path": "model",
     }
-    try:
-        bundle["model"].write().overwrite().save(str(output_path / "model"))
-    except Exception as exc:
+    if "target_encoding" in bundle:
+        metadata["target_encoding"] = bundle["target_encoding"]
+    if platform.system() == "Windows" and not os.environ.get("HADOOP_HOME"):
         metadata["model_persisted"] = False
         metadata["model_path"] = None
-        metadata["save_error"] = str(exc)
+        metadata["save_error"] = "HADOOP_HOME is not set; skipped Spark ML native model persistence on Windows."
         metadata["save_note"] = (
-            "Spark ML native model persistence failed. On Windows this usually means Hadoop winutils.exe "
-            "is missing and HADOOP_HOME/hadoop.home.dir are unset. Reports and metrics were still written."
+            "Reports and metrics were written. Configure HADOOP_HOME with winutils.exe, then rerun training "
+            "to save a reloadable Spark ML model."
         )
-        print("WARNING: Spark model metrics were produced, but native Spark model persistence failed.")
+        print("WARNING: Spark model metrics were produced, but native Spark model persistence was skipped.")
         print("WARNING: Configure HADOOP_HOME with winutils.exe to save reloadable Spark ML models on Windows.")
+    else:
+        try:
+            bundle["model"].write().overwrite().save(str(output_path / "model"))
+        except Exception as exc:
+            metadata["model_persisted"] = False
+            metadata["model_path"] = None
+            metadata["save_error"] = str(exc)
+            metadata["save_note"] = (
+                "Spark ML native model persistence failed. On Windows this usually means Hadoop winutils.exe "
+                "is missing and HADOOP_HOME/hadoop.home.dir are unset. Reports and metrics were still written."
+            )
+            print("WARNING: Spark model metrics were produced, but native Spark model persistence failed.")
+            print("WARNING: Configure HADOOP_HOME with winutils.exe to save reloadable Spark ML models on Windows.")
     (output_path / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return output_path
 
@@ -212,6 +227,9 @@ def _fit_tuned_model(
     pipeline = Pipeline(stages=[VectorAssembler(inputCols=FEATURES, outputCol="features"), estimator])
     if not param_grid:
         return pipeline.fit(train_df)
+    if len(param_grid) == 1:
+        print(f"Training {model_name} with fixed Spark params")
+        return pipeline.fit(train_df, param_grid[0])
 
     tuning = params.get("tuning", {})
     method = tuning.get("method", "train_validation_split")

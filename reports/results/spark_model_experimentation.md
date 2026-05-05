@@ -18,9 +18,9 @@ The target is modeled as `log1p(price_per_sqm)` to reduce skew.
 
 | Model | R2 | RMSE log | MAE log | RMSE EGP/sqm |
 | --- | ---: | ---: | ---: | ---: |
-| Spark Random Forest | 0.5394 | 0.4411 | 0.3264 | 59,856 |
-| Spark Decision Tree | 0.4589 | 0.4781 | 0.3555 | 61,225 |
-| Spark Linear Regression | 0.4534 | 0.4805 | 0.3627 | 64,707 |
+| Spark Random Forest | 0.4784 | 0.4377 | 0.3291 | 35,593 |
+| Spark Decision Tree | 0.4567 | 0.4467 | 0.3322 | 35,133 |
+| Spark Linear Regression | 0.4020 | 0.4686 | 0.3512 | 38,293 |
 
 ## Selected Model
 
@@ -30,9 +30,9 @@ The target is modeled as `log1p(price_per_sqm)` to reduce skew.
 
 | Model | Train R2 | Validation R2 | Test R2 | Test RMSE EGP/sqm |
 | --- | ---: | ---: | ---: | ---: |
-| Spark Random Forest | 0.5565 | 0.5278 | 0.5394 | 59,856 |
-| Spark Decision Tree | 0.4775 | 0.4535 | 0.4589 | 61,225 |
-| Spark Linear Regression | 0.4254 | 0.4202 | 0.4534 | 64,707 |
+| Spark Random Forest | 0.5081 | 0.4964 | 0.4784 | 35,593 |
+| Spark Decision Tree | 0.4849 | 0.4766 | 0.4567 | 35,133 |
+| Spark Linear Regression | 0.4168 | 0.4174 | 0.4020 | 38,293 |
 
 ## Training Scope
 

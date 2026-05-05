@@ -22,7 +22,13 @@ from src.config import (  # noqa: E402
 )
 from src.data.load_data import configure_local_spark, get_spark, load_raw_data, write_csv  # noqa: E402
 from src.data.preprocess import clean_property_data, write_data_validation_report, write_missing_values  # noqa: E402
-from src.features.build_features import build_model_features, write_feature_summary  # noqa: E402
+from src.features.build_features import write_feature_summary  # noqa: E402
+from src.features.build_features import (  # noqa: E402
+    add_listing_features,
+    apply_target_encoding_model,
+    fit_target_encoding_model,
+    serialize_target_encoding_model,
+)
 from src.models.train_spark import (  # noqa: E402
     load_spark_model_params,
     prepare_spark_model_data,
@@ -59,14 +65,28 @@ def main() -> None:
     write_data_validation_report(cleaning_report, RESULTS_DIR / "data_validation_report.md")
     write_missing_values(clean_df, RESULTS_DIR / "missing_values.csv")
 
-    print("Building features")
-    feature_df = build_model_features(clean_df)
+    print("Building listing features")
+    listing_feature_df = add_listing_features(clean_df)
+    raw_splits = split_spark_data(listing_feature_df)
+    target_encoding = fit_target_encoding_model(raw_splits["train"].filter("category = 'buy'"))
+    encoded_splits = {
+        split_name: apply_target_encoding_model(split_df, target_encoding)
+        for split_name, split_df in raw_splits.items()
+    }
+    feature_df = (
+        encoded_splits["train"]
+        .unionByName(encoded_splits["validation"])
+        .unionByName(encoded_splits["test"])
+    )
     write_csv(feature_df, PROCESSED_FEATURES_PATH)
     write_feature_summary(feature_df, RESULTS_DIR / "feature_summary.csv")
 
     print("Preparing buy-listing Spark model data")
-    model_df = prepare_spark_model_data(feature_df)
-    splits = split_spark_data(model_df)
+    splits = {
+        split_name: prepare_spark_model_data(split_df)
+        for split_name, split_df in encoded_splits.items()
+    }
+    model_df = splits["train"].unionByName(splits["validation"]).unionByName(splits["test"])
     params = load_spark_model_params(CONFIGS_DIR / "spark_model_params.json")
 
     print(
@@ -74,11 +94,12 @@ def main() -> None:
         f"validating on {splits['validation'].count():,}; testing on {splits['test'].count():,}"
     )
     spark_results, best_bundle = train_spark_models(splits, params)
+    best_bundle["target_encoding"] = serialize_target_encoding_model(target_encoding)
     write_spark_model_reports(spark_results, best_bundle, RESULTS_DIR)
     model_path = save_spark_model_bundle(best_bundle, MODELS_DIR)
 
-    y = model_df.select("label").toPandas()["label"]
-    plot_target_distribution(y.map(lambda value: float(np.expm1(value))), FIGURES_DIR / "target_distribution.png")
+    y = pd.Series(np.expm1(_collect_numeric_column(model_df, "label")))
+    plot_target_distribution(y, FIGURES_DIR / "target_distribution.png")
     spark_results_df = pd.DataFrame(
         [{k: v for k, v in result.items() if k != "fitted"} for result in spark_results]
     )
@@ -88,10 +109,16 @@ def main() -> None:
         best_bundle["features"],
         FIGURES_DIR / "spark_feature_importance.png",
     )
-    spark_predictions = best_bundle["model"].transform(splits["test"]).select("label", "prediction").toPandas()
+    spark_predictions = best_bundle["model"].transform(splits["test"]).select("label", "prediction")
+    spark_predictions_df = pd.DataFrame(
+        {
+            "label": _collect_numeric_column(spark_predictions, "label"),
+            "prediction": _collect_numeric_column(spark_predictions, "prediction"),
+        }
+    )
     plot_residuals(
-        spark_predictions["label"],
-        spark_predictions["prediction"].to_numpy(),
+        spark_predictions_df["label"],
+        spark_predictions_df["prediction"].to_numpy(),
         FIGURES_DIR / "spark_residuals.png",
     )
     print("Spark backend writes comparison metrics and figures under reports/")
@@ -100,6 +127,10 @@ def main() -> None:
     print(f"Saved model: {model_path}")
     print(f"Reports: {RESULTS_DIR}")
     print(f"Figures: {FIGURES_DIR}")
+
+
+def _collect_numeric_column(df, column_name: str, limit: int = 50_000) -> list[float]:
+    return [float(row[column_name]) for row in df.select(column_name).limit(limit).toLocalIterator()]
 
 
 if __name__ == "__main__":

@@ -3,16 +3,16 @@
     "method": "train_validation_split",
     "train_ratio": 0.8,
     "random_state": 42,
-    "parallelism": 2
+    "parallelism": 1
   },
   "linear_regression": {
     "enabled": true,
     "estimator": {
-      "maxIter": 100
+      "maxIter": 50
     },
     "param_grid": {
-      "regParam": [0.01, 0.1],
-      "elasticNetParam": [0.0, 0.5]
+      "regParam": [0.1],
+      "elasticNetParam": [0.0]
     }
   },
   "decision_tree": {
@@ -20,16 +20,16 @@
     "estimator": {},
     "param_grid": {
       "maxDepth": [6],
-      "minInstancesPerNode": [10, 30]
+      "minInstancesPerNode": [20]
     }
   },
   "random_forest": {
     "enabled": true,
     "estimator": {},
     "param_grid": {
-      "numTrees": [25],
-      "maxDepth": [8],
-      "minInstancesPerNode": [10],
+      "numTrees": [15],
+      "maxDepth": [7],
+      "minInstancesPerNode": [20],
       "featureSubsetStrategy": ["sqrt"]
     }
   },

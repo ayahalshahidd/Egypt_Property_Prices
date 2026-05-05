@@ -1,5 +1,5 @@
-pyspark
-pandas
-numpy
-matplotlib
-pytest
+pyspark==4.1.1
+pandas==2.3.3
+numpy==2.2.6
+matplotlib==3.10.6
+pytest==9.0.3

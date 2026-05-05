@@ -26,7 +26,7 @@ class CleaningReport:
     dropped_columns: int
     duplicates_removed: int
     critical_nulls_removed: int
-    payment_rows_removed: int
+    payment_rows_standardized_unknown: int
     outliers_removed: int
     bedroom_median: float
     bathroom_median: float
@@ -87,26 +87,33 @@ def clean_numeric_columns(df: DataFrame) -> tuple[DataFrame, float, float, int]:
 
 
 def standardize_payment_method(df: DataFrame) -> tuple[DataFrame, int]:
-    before_count = df.count()
+    normalized = F.lower(F.trim(F.coalesce(F.col("payment_method"), F.lit(""))))
     df = df.withColumn(
         "payment_method",
-        F.when(F.lower(F.trim(F.col("payment_method"))) == "cash", "cash")
-        .when(F.lower(F.trim(F.col("payment_method"))) == "installments", "installments")
-        .when(F.lower(F.trim(F.col("payment_method"))) == "cash | installments", "both")
-        .otherwise(None),
-    ).dropna(subset=["payment_method"])
+        F.when(normalized == "cash", "cash")
+        .when(normalized == "installments", "installments")
+        .when(normalized.isin("cash | installments", "installments | cash"), "both")
+        .when(normalized.contains("cash") & normalized.contains("install"), "both")
+        .when(normalized.contains("install"), "installments")
+        .when(normalized.contains("cash"), "cash")
+        .otherwise("unknown"),
+    )
 
-    return df, before_count - df.count()
+    return df, df.filter(F.col("payment_method") == "unknown").count()
 
 
 def add_target_and_remove_outliers(
     df: DataFrame,
     price_quantiles: tuple[float, float] = (0.01, 0.99),
     area_bounds: tuple[float, float] = (20.0, 1500.0),
+    price_per_sqm_bounds: tuple[float, float] = (1_000.0, 300_000.0),
 ) -> tuple[DataFrame, int, float, float]:
     df = df.withColumn("price_per_sqm", F.col("price_egp") / F.col("area_value"))
     lo_price, hi_price = df.approxQuantile("price_per_sqm", list(price_quantiles), 0.01)
     lo_area, hi_area = area_bounds
+    min_price_per_sqm, max_price_per_sqm = price_per_sqm_bounds
+    lo_price = max(float(lo_price), min_price_per_sqm)
+    hi_price = min(float(hi_price), max_price_per_sqm)
 
     before_count = df.count()
     df = df.filter(
@@ -138,7 +145,7 @@ def clean_property_data(df_raw: DataFrame) -> tuple[DataFrame, CleaningReport]:
     df = df.filter((F.col("price_egp") > 0) & (F.col("area_value") > 0))
     critical_nulls_removed = before_null_drop - df.count()
 
-    df, payment_rows_removed = standardize_payment_method(df)
+    df, payment_rows_standardized_unknown = standardize_payment_method(df)
     df, outliers_removed, min_price, max_price = add_target_and_remove_outliers(df)
 
     report = CleaningReport(
@@ -147,7 +154,7 @@ def clean_property_data(df_raw: DataFrame) -> tuple[DataFrame, CleaningReport]:
         dropped_columns=dropped_columns,
         duplicates_removed=duplicates_removed,
         critical_nulls_removed=critical_nulls_removed,
-        payment_rows_removed=payment_rows_removed,
+        payment_rows_standardized_unknown=payment_rows_standardized_unknown,
         outliers_removed=outliers_removed,
         bedroom_median=bedroom_median,
         bathroom_median=bathroom_median,
