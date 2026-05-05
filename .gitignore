@@ -226,8 +226,8 @@ data/processed/
 !data/processed/.gitkeep
 data/external/
 !data/external/.gitkeep
-models/
-!models/.gitkeep
+/models/
+!/models/.gitkeep
 *.crc
 reports/figures/
 !reports/figures/.gitkeep
