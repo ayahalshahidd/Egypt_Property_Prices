@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession
 
-DEFAULT_SPARK_MASTER = "local-cluster[2,2,2048]"
+DEFAULT_SPARK_MASTER = "local-cluster[2,2,4096]"
 
 FALLBACK_SPARK_MASTER = "local[2]"
 
@@ -65,8 +65,8 @@ def _build_spark(app_name: str, master: str) -> SparkSession:
         .config("spark.driver.bindAddress", "127.0.0.1")
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.master", master)
-        .config("spark.driver.memory", os.environ.get("SPARK_DRIVER_MEMORY", "4g"))
-        .config("spark.executor.memory", os.environ.get("SPARK_EXECUTOR_MEMORY", "4g"))
+        .config("spark.driver.memory", os.environ.get("SPARK_DRIVER_MEMORY", "2g"))
+        .config("spark.executor.memory", os.environ.get("SPARK_EXECUTOR_MEMORY", "2g"))
         .config("spark.sql.shuffle.partitions", os.environ.get("SPARK_SQL_SHUFFLE_PARTITIONS", "4"))
         .config("spark.default.parallelism", os.environ.get("SPARK_DEFAULT_PARALLELISM", "4"))
         .getOrCreate()
