@@ -9,8 +9,8 @@ from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession
 
+DEFAULT_SPARK_MASTER = "local-cluster[2,2,2048]"
 
-DEFAULT_SPARK_MASTER = "local[2]"
 FALLBACK_SPARK_MASTER = "local[2]"
 
 
