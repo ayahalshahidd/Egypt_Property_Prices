@@ -38,7 +38,12 @@ from src.models.train_spark import (  # noqa: E402
     write_spark_model_reports,
 )
 from src.visualization.visualize import (  # noqa: E402
+    plot_market_overview,
     plot_model_comparison,
+    plot_numeric_correlation_heatmap,
+    plot_price_area_relationships,
+    plot_price_distributions,
+    plot_property_map_sample,
     plot_residuals,
     plot_spark_feature_importance,
     plot_target_distribution,
@@ -64,6 +69,13 @@ def main() -> None:
     write_csv(clean_df, INTERIM_CLEANED_PATH)
     write_data_validation_report(cleaning_report, RESULTS_DIR / "data_validation_report.md")
     write_missing_values(clean_df, RESULTS_DIR / "missing_values.csv")
+
+    print("Generating exploratory data analysis figures")
+    plot_market_overview(raw_df, FIGURES_DIR / "eda_market_overview.png")
+    plot_price_distributions(clean_df, FIGURES_DIR / "eda_price_distributions.png")
+    plot_property_map_sample(raw_df, FIGURES_DIR / "eda_property_map_sample.png")
+    plot_price_area_relationships(clean_df, FIGURES_DIR / "eda_price_area_relationships.png")
+    plot_numeric_correlation_heatmap(clean_df, FIGURES_DIR / "eda_correlation_heatmap.png")
 
     print("Building listing features")
     listing_feature_df = add_listing_features(clean_df)
